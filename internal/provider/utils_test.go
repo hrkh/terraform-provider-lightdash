@@ -19,6 +19,9 @@ import (
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func TestIsIntegrationTestMode(t *testing.T) {
@@ -195,5 +198,41 @@ func TestReadMarkdownDescriptionEmbedded(t *testing.T) {
 				t.Errorf("readMarkdownDescription() returned empty content for %s", tt.filename)
 			}
 		})
+	}
+}
+
+func TestFindDuplicateStrings(t *testing.T) {
+	if got := findDuplicateStrings(nil); len(got) != 0 {
+		t.Errorf("expected no duplicates, got %v", got)
+	}
+	if got := findDuplicateStrings([]string{"a", "b", "c"}); len(got) != 0 {
+		t.Errorf("expected no duplicates, got %v", got)
+	}
+	if got := findDuplicateStrings([]string{"b", "a", "b", "c", "a", "a"}); !reflect.DeepEqual(got, []string{"b", "a"}) {
+		t.Errorf("unexpected duplicates: %v", got)
+	}
+}
+
+func TestHasNullElement(t *testing.T) {
+	withNull := types.SetValueMust(types.StringType, []attr.Value{types.StringValue("a"), types.StringNull()})
+	if !hasNullElement(withNull) {
+		t.Errorf("expected a null element to be found")
+	}
+	// A value that is only known after apply is not null.
+	withUnknown := types.SetValueMust(types.StringType, []attr.Value{types.StringValue("a"), types.StringUnknown()})
+	if hasNullElement(withUnknown) {
+		t.Errorf("expected no null element")
+	}
+	if hasNullElement(types.SetNull(types.StringType)) || hasNullElement(types.SetUnknown(types.StringType)) {
+		t.Errorf("expected no null element in a null or unknown set")
+	}
+}
+
+func TestUniqueStrings(t *testing.T) {
+	if got := uniqueStrings(nil); len(got) != 0 {
+		t.Errorf("expected no values, got %v", got)
+	}
+	if got := uniqueStrings([]string{"b", "a", "a", "b", "c"}); !reflect.DeepEqual(got, []string{"b", "a", "c"}) {
+		t.Errorf("unexpected result: %v", got)
 	}
 }
