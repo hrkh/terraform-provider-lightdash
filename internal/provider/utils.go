@@ -266,3 +266,51 @@ func stringSliceToStringList(ctx context.Context, values []string) (types.List, 
 	}
 	return types.ListValueFrom(ctx, types.StringType, elems)
 }
+
+// isKnownEmptySet returns true if the set is known and has no elements.
+func isKnownEmptySet(set types.Set) bool {
+	return !set.IsNull() && !set.IsUnknown() && len(set.Elements()) == 0
+}
+
+// findDuplicateStrings returns the values that appear more than once, each of them once,
+// in the order of their first appearance.
+func findDuplicateStrings(values []string) []string {
+	counts := make(map[string]int, len(values))
+	for _, value := range values {
+		counts[value]++
+	}
+	duplicates := []string{}
+	for _, value := range uniqueStrings(values) {
+		if counts[value] > 1 {
+			duplicates = append(duplicates, value)
+		}
+	}
+	return duplicates
+}
+
+// hasNullElement returns true if the set is known and has a null element.
+func hasNullElement(set types.Set) bool {
+	if set.IsNull() || set.IsUnknown() {
+		return false
+	}
+	for _, element := range set.Elements() {
+		if element.IsNull() {
+			return true
+		}
+	}
+	return false
+}
+
+// uniqueStrings removes duplicates while keeping the order.
+func uniqueStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	return result
+}
